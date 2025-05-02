@@ -1,19 +1,12 @@
-variable "aws_region" {
-  default = "us-east-1"
-}
-
 variable "instance_type" {
-  default = "t3.micro"
+  default = "t2.micro"
 }
 
 variable "instance_name" {
-  default = "TerraformEC2"
+  default = "Terraform-SSM-Instance"
 }
 
-variable "key_name" {
-  default = "terraform-key"
-}
-
-variable "public_key_path" {
-  default = "~/.ssh/id_rsa.pub"
+variable "vpc_id" {
+  description = "The VPC ID where Account-SG exists"
+  type        = string
 }
