@@ -1,11 +1,12 @@
 # This is a basic workflow to help you get started with Actions
+
 name: CI Pipeline
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
   workflow_dispatch:
     inputs:
       branch:
@@ -81,8 +82,4 @@ jobs:
       - name: Deploy Step
         run: |
           echo "Deploying application from ${{ github.event.inputs.branch || github.ref_name }}"
-          
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/master'
-        run: terraform apply -auto-approve
-      
+          # Add Terraform apply or deployment logic here
