@@ -4,15 +4,15 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "master" ]
   workflow_dispatch:
     inputs:
       branch:
         description: "Select the branch to run this workflow on"
         required: false
-        default: "main"
+        default: "master"
         type: choice
         options:
           - main
