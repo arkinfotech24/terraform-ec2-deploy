@@ -35,7 +35,7 @@ jobs:
           echo "Simulating build for ${{ github.event.inputs.branch || github.ref_name }}"
 
   test:
-    name: Test
+    name: Test and Scan
     runs-on: ubuntu-latest
     needs: build
     steps:
@@ -55,6 +55,19 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
+      - name: Install tflint
+        run: |
+          curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+
+      - name: Run tflint
+        run: tflint --init && tflint
+
+      - name: Install Checkov
+        run: pip install checkov
+
+      - name: Run Checkov (Security Scanner)
+        run: checkov -d .
+  
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
@@ -68,4 +81,8 @@ jobs:
       - name: Deploy Step
         run: |
           echo "Deploying application from ${{ github.event.inputs.branch || github.ref_name }}"
-          # Add Terraform apply or AWS CLI logic here
+          
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main'
+        run: terraform apply -auto-approve
+      
