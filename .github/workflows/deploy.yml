@@ -4,15 +4,15 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ "main" ]
   workflow_dispatch:
     inputs:
       branch:
         description: "Select the branch to run this workflow on"
         required: false
-        default: "master"
+        default: "main"
         type: choice
         options:
           - main
@@ -21,6 +21,9 @@ on:
           - feature
 
 jobs:
+  # ----------------------------------------
+  # Stage 1: Continuous Download / Checkout
+  # ----------------------------------------
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -35,6 +38,9 @@ jobs:
           echo "Starting build..."
           echo "Simulating build for ${{ github.event.inputs.branch || github.ref_name }}"
 
+  # ----------------------------------------
+  # Stage 2: Continuous Testing and Scanning
+  # ----------------------------------------
   test:
     name: Test and Scan
     runs-on: ubuntu-latest
@@ -60,15 +66,18 @@ jobs:
         run: |
           curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
 
-      - name: Run tflint (non-blocking)
-        run: tflint --init && tflint || true
+      - name: Run tflint
+        run: tflint --init && tflint
 
       - name: Install Checkov
         run: pip install checkov
 
       - name: Run Checkov (Security Scanner)
-        run: checkov -d . || true
-  
+        run: checkov -d .
+
+  # ----------------------------------------
+  # Stage 3: Continuous Deployment (apply)
+  # ----------------------------------------
   deploy:
     name: Deploy
     runs-on: ubuntu-latest
@@ -79,7 +88,82 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
-      - name: Deploy Step
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
+
+      - name: Capture Terraform Output
+        id: tf-output
         run: |
-          echo "Deploying application from ${{ github.event.inputs.branch || github.ref_name }}"
-          # Add Terraform apply or deployment logic here
+          terraform output -json > tf_outputs.json
+          echo "Terraform Outputs:"
+          cat tf_outputs.json
+
+      - name: Comment Terraform Output on PR
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          header: terraform-output
+          message: |
+            ## ✅ Terraform Apply Output
+
+            \`\`\`json
+            ${{ steps.tf-output.outputs.output }}
+            \`\`\`
+# ----------------------------------------
+  # Stage 4: Continuous Post-Deployment Testing
+  # ----------------------------------------
+  post_deploy_test:
+    name: Post-Deploy Verification
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Get Instance Public IP
+        id: ip
+        run: |
+          IP=$(terraform output -raw instance_public_ip)
+          echo "public_ip=$IP" >> "$GITHUB_OUTPUT"
+
+      - name: Verify SSH Port Open
+        run: |
+          echo "Checking SSH (port 22) on ${PUBLIC_IP}..."
+          nc -zv ${{ steps.ip.outputs.public_ip }} 22 || echo "⚠️ Port 22 is closed or unreachable."
+
+      - name: Test HTTP response (if web server deployed)
+        run: |
+          echo "Attempting HTTP GET on ${PUBLIC_IP}..."
+          curl -I --connect-timeout 5 http://${{ steps.ip.outputs.public_ip }} || echo "⚠️ HTTP service unavailable."
