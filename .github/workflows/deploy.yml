@@ -102,7 +102,7 @@ jobs:
           aws-region: us-east-1
           role-to-assume: arn:aws:iam::891711635596:role/Account-IAM-Role
           role-duration-seconds: 3600
-          role-session-name: GitHubActions
+          role-session-name: GitHubActions-${{ github.run_id }}  # Added run_id for uniqueness
           role-skip-session-tagging: true  # Often needed when chaining roles
 
       - name: Terraform Init
