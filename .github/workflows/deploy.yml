@@ -103,6 +103,7 @@ jobs:
           role-to-assume: arn:aws:iam::891711635596:role/Account-IAM-Role
           role-duration-seconds: 3600
           role-session-name: GitHubActions
+          role-skip-session-tagging: true  # Often needed when chaining roles
 
       - name: Terraform Init
         run: terraform init
