@@ -89,6 +89,14 @@ jobs:
         with:
           terraform_version: 1.5.7
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install AWS SDK
+        run: npm install @aws-sdk/client-ec2
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
