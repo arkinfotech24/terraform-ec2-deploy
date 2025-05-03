@@ -1,94 +1,91 @@
-# main.tf
-
 provider "aws" {
   region = "us-east-1"
-  # Ensure AWS credentials are set via environment variables or GitHub Secrets
 }
 
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-
-  tags = {
-    Name = "main-vpc"
+# -----------------------------
+# Lookup Existing Security Group in VPC
+# -----------------------------
+data "aws_security_group" "account_sg" {
+  filter {
+    name   = "group-name"
+    values = ["Account-SG"]
   }
-}
 
-resource "aws_internet_gateway" "igw" {
-  vpc_id = aws_vpc.main.id
-
-  tags = {
-    Name = "main-igw"
+  filter {
+    name   = "vpc-id"
+    values = ["vpc-bd543ec7"]
   }
 }
 
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  map_public_ip_on_launch = true
-  availability_zone       = "us-east-1a"
+# -----------------------------
+# IAM Role, Policy, and Instance Profile for SSM
+# -----------------------------
+resource "aws_iam_role" "ssm_role" {
+  name = "EC2SSMRole"
 
-  tags = {
-    Name = "public-subnet"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "ec2.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ssm_attach" {
+  role       = aws_iam_role.ssm_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
+resource "aws_iam_instance_profile" "ssm_profile" {
+  name = "ec2-ssm-profile"
+  role = aws_iam_role.ssm_role.name
+}
+
+# -----------------------------
+# Get Latest Amazon Linux 2023 AMI
+# -----------------------------
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["al2023-ami-*-x86_64"]
   }
 }
 
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-  }
-
-  tags = {
-    Name = "public-rt"
-  }
-}
-
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
-  route_table_id = aws_route_table.public.id
-}
-
-resource "aws_security_group" "ssh" {
-  name        = "allow_ssh"
-  description = "Allow SSH access"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "allow-ssh"
-  }
-}
-
-resource "aws_instance" "ec2" {
-  ami                         = "ami-0c94855ba95c71c99" # Amazon Linux 2 AMI (us-east-1)
-  instance_type               = "t2.micro"
-  subnet_id                   = aws_subnet.public.id
-  vpc_security_group_ids      = [aws_security_group.ssh.id]
+# -----------------------------
+# EC2 Instance with SSM and SSH Access
+# -----------------------------
+resource "aws_instance" "web" {
+  ami                         = data.aws_ami.amazon_linux.id
+  instance_type               = var.instance_type
+  key_name                    = "alreliance-key"  # Use existing key
+  subnet_id                   = "subnet-9a5ab4d7"  # Use existing subnet
+  vpc_security_group_ids      = [data.aws_security_group.account_sg.id]  # Use existing SG
   associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
+
+  user_data = <<-EOF
+              #!/bin/bash
+              cd /tmp
+              sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+              sudo systemctl enable amazon-ssm-agent
+              sudo systemctl start amazon-ssm-agent
+            EOF
 
   tags = {
-    Name = "ci-cd-instance"
+    Name = var.instance_name
   }
 }
 
-output "public_ip" {
-  description = "Public IP of EC2 instance"
-  value       = aws_instance.ec2.public_ip
+# -----------------------------
+# Outputs
+# -----------------------------
+output "instance_public_ip" {
+  value = aws_instance.web.public_ip
 }
-
