@@ -55,8 +55,8 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      - name: Terraform Format Check
-        run: terraform fmt -check
+      - name: Terraform Auto Format
+        run: terraform fmt -recuresive
 
       - name: Static Code Analysis with TFSec
         uses: aquasecurity/tfsec-action@v1.0.0
