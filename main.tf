@@ -22,8 +22,6 @@ variable "vpc_id" {
   type        = string
 }
 
-# main.tf
-
 # Lookup Existing Security Group
 
 data "aws_security_group" "account_sg" {
@@ -110,3 +108,4 @@ output "public_ip" {
 output "ssm_profile" {
   value = aws_iam_instance_profile.ssm_profile.name
 }
+
