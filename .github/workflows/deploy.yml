@@ -96,6 +96,9 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
+      - name: Verify AWS Credentials
+        run: aws sts get-caller-identity
+
       - name: Terraform Init and Apply
         env:
           TF_VAR_vpc_id: "vpc-bd543ec7"
