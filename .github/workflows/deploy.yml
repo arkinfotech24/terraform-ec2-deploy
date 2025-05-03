@@ -3,26 +3,86 @@
 # # ─────────────────────────────
 # # GitHub Actions: CI Pipeline
 # # ─────────────────────────────
-# name: CI Pipeline
-
-name: Deploy EC2 with SSM via Terraform
+name: CI Pipeline
 
 on:
   push:
     branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
   workflow_dispatch:
-
-permissions:
-  id-token: write
-  contents: read
+    inputs:
+      branch:
+        description: "Select the branch to run this workflow on"
+        required: false
+        default: "master"
+        type: choice
+        options:
+          - main
+          - dev
+          - staging
+          - feature
 
 jobs:
-  terraform-deploy:
-    runs-on: ubuntu-latest
 
+  # ─────────────────────────────
+  # Step 1: Build Job
+  # ─────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
+
+      - name: Build Step
+        run: |
+          echo "Starting build..."
+          echo "Simulating build for ${{ github.event.inputs.branch || github.ref_name }}"
+
+  # ─────────────────────────────
+  #  Step 2: Test Job
+  # ─────────────────────────────
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+  # ─────────────────────────────
+  #  Step 3: Continous Deployment Job
+  # ─────────────────────────────
+  deploy:
+    name: Continous Deployment
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
+
+      - name: Deploy Step
+        run: |
+          echo "Deploying application from ${{ github.event.inputs.branch || github.ref_name }}"
+          # terraform apply -auto-approve or AWS CLI logic here
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
@@ -39,137 +99,29 @@ jobs:
       - name: Verify AWS Credentials
         run: aws sts get-caller-identity
 
-      - name: Terraform Init
-        run: terraform init
-
-      - name: Terraform Apply
+      - name: Terraform Init and Apply
         env:
-          TF_VAR_vpc_id: "vpc-bd543ec7"  # <-- replace with your actual VPC ID or use a GitHub secret
-        run: terraform apply -auto-approve
+          TF_VAR_vpc_id: "vpc-bd543ec7"
+        run: |
+          terraform init -upgrade
+          terraform apply -auto-approve
+  # ─────────────────────────────
+  #  Step 4: Post-Deployment Job
+  # ─────────────────────────────
+  post-deploy:
+    name: Post Deployment
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
 
-
-# # ─────────────────────────────
-# # GitHub Actions: CI Pipeline
-# # ─────────────────────────────
-# name: CI Pipeline
-
-# on:
-#   push:
-#     branches: [ "master" ]
-#   pull_request:
-#     branches: [ "master" ]
-#   workflow_dispatch:
-#     inputs:
-#       branch:
-#         description: "Select the branch to run this workflow on"
-#         required: false
-#         default: "master"
-#         type: choice
-#         options:
-#           - main
-#           - dev
-#           - staging
-#           - feature
-
-# jobs:
-
-#   # ─────────────────────────────
-#   # Step 1: Build Job
-#   # ─────────────────────────────
-#   build:
-#     name: Build
-#     runs-on: ubuntu-latest
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
-#         with:
-#           ref: ${{ github.event.inputs.branch || github.ref_name }}
-
-#       - name: Build Step
-#         run: |
-#           echo "Starting build..."
-#           echo "Simulating build for ${{ github.event.inputs.branch || github.ref_name }}"
-
-#   # ─────────────────────────────
-#   #  Step 2: Test Job
-#   # ─────────────────────────────
-#   test:
-#     name: Test
-#     runs-on: ubuntu-latest
-#     needs: build
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
-#         with:
-#           ref: ${{ github.event.inputs.branch || github.ref_name }}
-
-#       - name: Setup Terraform
-#         uses: hashicorp/setup-terraform@v2
-#         with:
-#           terraform_version: 1.5.7
-
-#       - name: Terraform Init
-#         run: terraform init
-
-#       - name: Terraform Validate
-#         run: terraform validate
-
-#   # ─────────────────────────────
-#   #  Step 3: Continous Deployment Job
-#   # ─────────────────────────────
-#   deploy:
-#     name: Continous Deployment
-#     runs-on: ubuntu-latest
-#     needs: test
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
-#         with:
-#           ref: ${{ github.event.inputs.branch || github.ref_name }}
-
-#       - name: Deploy Step
-#         run: |
-#           echo "Deploying application from ${{ github.event.inputs.branch || github.ref_name }}"
-#           # terraform apply -auto-approve or AWS CLI logic here
-
-#       - name: Setup Terraform
-#         uses: hashicorp/setup-terraform@v2
-#         with:
-#           terraform_version: 1.5.7
-
-#       - name: Configure AWS Credentials
-#         uses: aws-actions/configure-aws-credentials@v2
-#         with:
-#           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#           aws-region: us-east-1
-
-#       - name: Verify AWS Credentials
-#         run: aws sts get-caller-identity
-
-#       - name: Terraform Init and Apply
-#         env:
-#           TF_VAR_vpc_id: "vpc-bd543ec7"
-#         run: |
-#           terraform init -upgrade
-#           terraform apply -auto-approve
-#   # ─────────────────────────────
-#   #  Step 4: Post-Deployment Job
-#   # ─────────────────────────────
-#   post-deploy:
-#     name: Post Deployment
-#     runs-on: ubuntu-latest
-#     needs: deploy
-#     steps:
-#       - name: Checkout code
-#         uses: actions/checkout@v4
-#         with:
-#           ref: ${{ github.event.inputs.branch || github.ref_name }}
-
-#       - name: Post-Deployment Step
-#         run: |
-#           echo "Running post-deployment tasks for ${{ github.event.inputs.branch || github.ref_name }}"
-#           # Example: notify Slack, tag repo, run health checks, etc.
+      - name: Post-Deployment Step
+        run: |
+          echo "Running post-deployment tasks for ${{ github.event.inputs.branch || github.ref_name }}"
+          # Example: notify Slack, tag repo, run health checks, etc.
 
 
 # name: CI Pipeline
