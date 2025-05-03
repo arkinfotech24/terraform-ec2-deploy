@@ -89,6 +89,11 @@ jobs:
         with:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
+      - name: Deploy Step
+        run: |
+          echo "Deploying application from ${{ github.event.inputs.branch || github.ref_name }}"
+          # Add Terraform apply or AWS CLI logic here    
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
