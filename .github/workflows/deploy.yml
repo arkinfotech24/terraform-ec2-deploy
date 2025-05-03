@@ -54,7 +54,7 @@ jobs:
         run: terraform init
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform apply -auto-approve -var="vpc_id=${{ github.event.inputs.vpc_id }}"
 
       - name: Terraform Validate
         run: terraform validate
