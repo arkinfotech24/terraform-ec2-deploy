@@ -90,7 +90,7 @@ jobs:
           terraform_version: 1.5.7
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve
+        run: terraform init -upgrade & terraform apply -auto-approve
 
   # ─────────────────────────────
   #  Step 4: Post-Deployment Job
