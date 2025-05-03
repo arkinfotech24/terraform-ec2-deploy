@@ -97,6 +97,8 @@ jobs:
           aws-region: us-east-1
 
       - name: Terraform Init and Apply
+        env:
+          TF_VAR_vpc_id: "vpc-bd543ec7"
         run: |
           terraform init -upgrade
           terraform apply -auto-approve
