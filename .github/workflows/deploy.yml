@@ -70,9 +70,15 @@ jobs:
         run: |
           echo "Deploying application from ${{ github.event.inputs.branch || github.ref_name }}"
           # Add Terraform apply or AWS CLI logic here
+     
+      - name: Terraform Init
+        run: terraform init
 
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
 
-
+      - name: Terraform Output
+        run: terraform output
 
 # # ─────────────────────────────
 # # GitHub Actions: CI Pipeline
