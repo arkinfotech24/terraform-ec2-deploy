@@ -71,15 +71,22 @@ jobs:
           echo "Deploying application from ${{ github.event.inputs.branch || github.ref_name }}"
           # Add Terraform apply or AWS CLI logic here
      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.5.7
+
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply
-        run: terraform apply -auto-approve
+      - name: Terraform Validate
+        run: terraform validate
 
-      - name: Terraform Output
-        run: terraform output
+      - name: Terraform Auto Format
+        run: terraform fmt -recursive
 
+      - name: Static Code Analysis with TFSec
+        uses: aquasecurity/tfsec-action@v1.0.0
 # # ─────────────────────────────
 # # GitHub Actions: CI Pipeline
 # # ─────────────────────────────
