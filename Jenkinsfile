@@ -14,7 +14,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git url: 'https://github.com/arkinfotech24/terraform-ec2-deploy.git', branch: 'main'
+                git url: 'https://github.com/arkinfotech24/terraform-ec2-deploy.git', branch: 'master'
             }
         }
 
