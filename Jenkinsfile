@@ -1,12 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        AWS_ACCESS_KEY_ID     = credentials('aws-creds').accessKey
-        AWS_SECRET_ACCESS_KEY = credentials('aws-creds').secretKey
-        TF_VAR_region         = "us-east-1"
-    }
-
     options {
         timestamps()
     }
@@ -18,41 +12,50 @@ pipeline {
             }
         }
 
-        stage('Init') {
+        stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    sh 'terraform init'
+                }
             }
         }
 
-        stage('Validate') {
+        stage('Terraform Plan') {
             steps {
-                sh 'terraform validate'
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    sh 'terraform plan -out=tfplan'
+                }
             }
         }
 
-        stage('Plan') {
-            steps {
-                sh 'terraform plan -out=tfplan'
-            }
-        }
-
-        stage('Apply') {
+        stage('Terraform Apply') {
             when {
-                branch 'main'
+                branch 'master'
             }
             steps {
-                input message: 'Approve apply?', ok: 'Apply'
-                sh 'terraform apply -auto-approve tfplan'
+                input message: 'Approve Terraform Apply?', ok: 'Apply'
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: 'aws-creds'
+                ]]) {
+                    sh 'terraform apply -auto-approve tfplan'
+                }
             }
         }
     }
 
     post {
         success {
-            echo 'Terraform apply succeeded!'
+            echo "Terraform completed successfully."
         }
         failure {
-            echo 'Terraform pipeline failed.'
+            echo "Terraform pipeline failed."
         }
     }
 }
