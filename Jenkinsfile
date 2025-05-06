@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         AWS_REGION = 'us-east-1'
-        ROLE_ARN = 'arn:aws:iam::<ACCOUNT_ID>:role/terraform-deploy-role'
+        ROLE_ARN = 'arn:aws:iam::891711635596:role/terraform-deploy-role'
         SESSION_NAME = 'jenkins-terraform-session'
     }
 
