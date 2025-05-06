@@ -1,8 +1,10 @@
 pipeline {
     agent any
 
-    options {
-        timestamps()
+    environment {
+        AWS_REGION = 'us-east-1'
+        ROLE_ARN = 'arn:aws:iam::<ACCOUNT_ID>:role/terraform-deploy-role'
+        SESSION_NAME = 'jenkins-terraform-session'
     }
 
     stages {
@@ -12,25 +14,43 @@ pipeline {
             }
         }
 
-        stage('Terraform Init') {
+        stage('Assume Role') {
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
+                    credentialsId: 'sts-user-creds'
                 ]]) {
-                    sh 'terraform init'
+                    script {
+                        def credsJson = sh(
+                            script: """
+                            aws sts assume-role \
+                              --role-arn "$ROLE_ARN" \
+                              --role-session-name "$SESSION_NAME" \
+                              --region "$AWS_REGION" \
+                              --output json
+                            """,
+                            returnStdout: true
+                        ).trim()
+
+                        def json = readJSON text: credsJson
+
+                        env.AWS_ACCESS_KEY_ID     = json.Credentials.AccessKeyId
+                        env.AWS_SECRET_ACCESS_KEY = json.Credentials.SecretAccessKey
+                        env.AWS_SESSION_TOKEN     = json.Credentials.SessionToken
+                    }
                 }
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init'
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]]) {
-                    sh 'terraform plan -out=tfplan'
-                }
+                sh 'terraform plan -out=tfplan'
             }
         }
 
@@ -40,22 +60,14 @@ pipeline {
             }
             steps {
                 input message: 'Approve Terraform Apply?', ok: 'Apply'
-                withCredentials([[
-                    $class: 'AmazonWebServicesCredentialsBinding',
-                    credentialsId: 'aws-creds'
-                ]]) {
-                    sh 'terraform apply -auto-approve tfplan'
-                }
+                sh 'terraform apply -auto-approve tfplan'
             }
         }
     }
 
     post {
-        success {
-            echo "Terraform completed successfully."
-        }
         failure {
-            echo "Terraform pipeline failed."
+            echo 'Terraform pipeline failed.'
         }
     }
 }
