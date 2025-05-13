@@ -33,6 +33,10 @@ resource "aws_iam_role" "ssm_role" {
       Action = "sts:AssumeRole"
     }]
   })
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 resource "aws_iam_role_policy_attachment" "ssm_attach" {
@@ -43,6 +47,10 @@ resource "aws_iam_role_policy_attachment" "ssm_attach" {
 resource "aws_iam_instance_profile" "ssm_profile" {
   name = "ec2-ssm-profile"
   role = aws_iam_role.ssm_role.name
+
+  lifecycle {
+    ignore_changes = [name]
+  }
 }
 
 # -----------------------------
