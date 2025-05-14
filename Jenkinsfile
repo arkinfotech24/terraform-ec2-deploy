@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION = 'us-east-1'
-        ROLE_ARN = 'arn:aws:iam::891711635596:role/terraform-deploy-role'
-        SESSION_NAME = 'jenkins-terraform-session'
+        AWS_REGION    = 'us-east-1'
+        ROLE_ARN      = 'arn:aws:iam::891711635596:role/terraform-deploy-role'
+        SESSION_NAME  = 'jenkins-terraform-session'
     }
 
     stages {
@@ -23,11 +23,11 @@ pipeline {
                     script {
                         def credsJson = sh(
                             script: """
-                            aws sts assume-role \
-                              --role-arn "$ROLE_ARN" \
-                              --role-session-name "$SESSION_NAME" \
-                              --region "$AWS_REGION" \
-                              --output json
+                                aws sts assume-role \
+                                  --role-arn "$ROLE_ARN" \
+                                  --role-session-name "$SESSION_NAME" \
+                                  --region "$AWS_REGION" \
+                                  --output json
                             """,
                             returnStdout: true
                         ).trim()
@@ -55,12 +55,17 @@ pipeline {
         }
 
         stage('Terraform Apply') {
-            when {
-                branch 'master'
-            }
             steps {
-                input message: 'Approve Terraform Apply?', ok: 'Apply'
-                sh 'terraform apply -auto-approve tfplan'
+                script {
+                    sh '''
+                        if [ ! -f tfplan ]; then
+                            echo "⚠️ Plan file not found, generating a new one..."
+                            terraform plan -out=tfplan -input=false
+                        fi
+
+                        terraform apply -input=false -auto-approve tfplan
+                    '''
+                }
             }
         }
     }
