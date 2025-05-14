@@ -35,7 +35,7 @@ resource "null_resource" "delete_existing_role" {
 # **New IAM Role, Policy, and Instance Profile for SSM**
 # -----------------------------
 resource "aws_iam_role" "new_ssm_role" {
-  name       = "NewEC2SSMRole"
+  name       = "*"
   depends_on = [null_resource.delete_existing_role]  # Ensures deletion happens first
 
   assume_role_policy = jsonencode({
