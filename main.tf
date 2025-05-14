@@ -24,14 +24,27 @@ resource "null_resource" "delete_existing_role" {
     command = <<EOT
       #!/bin/bash
       ROLE_NAME="NewSSM-EC2Role"
+      PROFILE_NAME="new-ec2-ssm-profile"
 
+      # Check if role exists
       if aws iam get-role --role-name "$ROLE_NAME" > /dev/null 2>&1; then
-        echo "⚠️ Role $ROLE_NAME exists. Deleting before Terraform Apply..."
-        aws iam detach-role-policy --role-name "$ROLE_NAME" \
-          --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore || true
-        aws iam delete-role --role-name "$ROLE_NAME"
+        echo "⚠️ Role $ROLE_NAME exists. Cleaning up before Terraform apply..."
+
+        # Check and detach from instance profile if needed
+        if aws iam get-instance-profile --instance-profile-name "$PROFILE_NAME" > /dev/null 2>&1; then
+          echo "🔁 Detaching role $ROLE_NAME from instance profile $PROFILE_NAME..."
+          aws iam remove-role-from-instance-profile --instance-profile-name "$PROFILE_NAME" --role-name "$ROLE_NAME" || true
+          echo "🧹 Deleting instance profile $PROFILE_NAME..."
+          aws iam delete-instance-profile --instance-profile-name "$PROFILE_NAME" || true
+        fi
+
+        echo "📎 Detaching policy from role $ROLE_NAME..."
+        aws iam detach-role-policy --role-name "$ROLE_NAME" --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore || true
+
+        echo "🗑️ Deleting IAM role $ROLE_NAME..."
+        aws iam delete-role --role-name "$ROLE_NAME" || true
       else
-        echo "✅ Role $ROLE_NAME not found. Continuing..."
+        echo "✅ Role $ROLE_NAME not found. Nothing to delete."
       fi
     EOT
     interpreter = ["bash", "-c"]
