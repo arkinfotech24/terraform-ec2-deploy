@@ -26,12 +26,6 @@ resource "null_resource" "delete_existing_role" {
     interpreter = ["bash"]
   }
 
-  provisioner "local-exec" {
-    command     = "${path.module}/scripts/delete-role.cmd"
-    when        = "create"
-    interpreter = ["cmd.exe", "/C"]
-  }
-
   triggers = {
     always_run = timestamp()
   }
