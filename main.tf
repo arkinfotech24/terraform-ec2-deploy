@@ -24,7 +24,7 @@ resource "null_resource" "delete_existing_role" {
     command = <<EOT
       ROLE_NAME="SSM-EC2Role"
       ROLE_EXISTS=$(aws iam get-role --role-name $ROLE_NAME 2>/dev/null || echo "Not Found")
-      if [ $ROLE_EXISTS != "Not Found" ]; then
+      if [ "$ROLE_EXISTS" != "Not Found" ]; then
         echo "⚠️ Role $ROLE_NAME exists. Deleting before Terraform Apply..."
         aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore || true
         aws iam delete-role --role-name $ROLE_NAME
