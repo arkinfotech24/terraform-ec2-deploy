@@ -65,7 +65,7 @@ data "aws_ami" "ubuntu" {
   owners      = ["099720109477"]  # Canonical's AWS account ID
 
   filter {
-    name   = "ubuntu-22.04-ami-2023.0.*"
+    name   = "Ubuntu 22.04-ami-*-x86_64"
     values = ["ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"]
   }
 }
