@@ -20,7 +20,7 @@ data "aws_security_group" "account_sg" {
 # **New IAM Role, Policy, and Instance Profile for SSM**
 # -----------------------------
 resource "aws_iam_role" "new_ssm_role" {
-  name = "NewEC2SSMRole"
+  name = "NewestEC2SSMRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
