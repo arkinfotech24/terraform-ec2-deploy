@@ -11,4 +11,8 @@ variable "vpc_id" {
   type        = string
 }
 
-
+variable "platform" {
+  description = "Target platform to run the local-exec provisioner (windows or unix)"
+  type        = string
+  default     = "unix"
+}
