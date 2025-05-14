@@ -22,10 +22,12 @@ data "aws_security_group" "account_sg" {
 resource "null_resource" "delete_existing_role" {
   provisioner "local-exec" {
     command = <<EOT
-      ROLE_EXISTS=$(aws iam get-role --role-name NewEC2SSMRole 2>/dev/null || echo "Not Found")
+      ROLE_NAME="SSM-EC2Role"
+      ROLE_EXISTS=$(aws iam get-role --role-name $ROLE_NAME 2>/dev/null || echo "Not Found")
       if [[ $ROLE_EXISTS != "Not Found" ]]; then
-        echo "⚠️ Role exists. Deleting before Terraform Apply..."
-        aws iam delete-role --role-name NewEC2SSMRole
+        echo "⚠️ Role $ROLE_NAME exists. Deleting before Terraform Apply..."
+        aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore || true
+        aws iam delete-role --role-name $ROLE_NAME
       fi
     EOT
   }
@@ -56,6 +58,10 @@ resource "aws_iam_role_policy_attachment" "new_ssm_attach" {
 resource "aws_iam_instance_profile" "new_ssm_profile" {
   name = "new-ec2-ssm-profile"
   role = aws_iam_role.new_ssm_role.name
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # -----------------------------
