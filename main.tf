@@ -10,7 +10,6 @@ data "aws_security_group" "account_sg" {
     name   = "group-name"
     values = ["Account-SG"]
   }
-
   filter {
     name   = "vpc-id"
     values = ["vpc-bd543ec7"]
@@ -18,10 +17,10 @@ data "aws_security_group" "account_sg" {
 }
 
 # -----------------------------
-# IAM Role, Policy, and Instance Profile for SSM
+# **New IAM Role, Policy, and Instance Profile for SSM**
 # -----------------------------
-resource "aws_iam_role" "ssm_role" {
-  name = "EC2SSMRole"
+resource "aws_iam_role" "new_ssm_role" {
+  name = "NewEC2SSMRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -35,14 +34,14 @@ resource "aws_iam_role" "ssm_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "ssm_attach" {
-  role       = aws_iam_role.ssm_role.name
+resource "aws_iam_role_policy_attachment" "new_ssm_attach" {
+  role       = aws_iam_role.new_ssm_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-resource "aws_iam_instance_profile" "ssm_profile" {
-  name = "ec2-ssm-profile"
-  role = aws_iam_role.ssm_role.name
+resource "aws_iam_instance_profile" "new_ssm_profile" {
+  name = "new-ec2-ssm-profile"
+  role = aws_iam_role.new_ssm_role.name
 }
 
 # -----------------------------
@@ -59,16 +58,16 @@ data "aws_ami" "amazon_linux" {
 }
 
 # -----------------------------
-# EC2 Instance with SSM and SSH Access
+# EC2 Instance with New IAM Role
 # -----------------------------
 resource "aws_instance" "web" {
   ami                         = data.aws_ami.amazon_linux.id
   instance_type               = var.instance_type
-  key_name                    = "alreliance-key"  # Use existing key
-  subnet_id                   = "subnet-9a5ab4d7"  # Use existing subnet
-  vpc_security_group_ids      = [data.aws_security_group.account_sg.id]  # Use existing SG
+  key_name                    = "alreliance-key"
+  subnet_id                   = "subnet-9a5ab4d7"
+  vpc_security_group_ids      = [data.aws_security_group.account_sg.id]
   associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.new_ssm_profile.name
 
   user_data = <<-EOF
               #!/bin/bash
