@@ -23,13 +23,15 @@ resource "null_resource" "delete_existing_role" {
   provisioner "local-exec" {
     command = <<EOT
       ROLE_NAME="SSM-EC2Role"
-      ROLE_EXISTS=$(aws iam get-role --role-name $ROLE_NAME 2>/dev/null || echo "Not Found")
-      if [ "$ROLE_EXISTS" != "Not Found" ]; then
+      if aws iam get-role --role-name "$ROLE_NAME" > /dev/null 2>&1; then
         echo "⚠️ Role $ROLE_NAME exists. Deleting before Terraform Apply..."
-        aws iam detach-role-policy --role-name $ROLE_NAME --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore || true
-        aws iam delete-role --role-name $ROLE_NAME
+        aws iam detach-role-policy --role-name "$ROLE_NAME" --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore" || true
+        aws iam delete-role --role-name "$ROLE_NAME"
+      else
+        echo "✅ Role $ROLE_NAME not found. Continuing..."
       fi
     EOT
+    interpreter = ["/bin/bash", "-c"]
   }
 }
 
@@ -38,14 +40,14 @@ resource "null_resource" "delete_existing_role" {
 # -----------------------------
 resource "aws_iam_role" "new_ssm_role" {
   name       = "SSM-EC2Role"
-  depends_on = [null_resource.delete_existing_role]  # Ensures deletion happens first
+  depends_on = [null_resource.delete_existing_role]
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
       Effect = "Allow",
       Principal = { Service = "ec2.amazonaws.com" },
-      Action = "sts:AssumeRole"
+      Action    = "sts:AssumeRole"
     }]
   })
 }
