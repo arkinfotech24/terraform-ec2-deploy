@@ -32,6 +32,7 @@ resource "null_resource" "delete_existing_role" {
         echo ✅ Role %ROLE_NAME% not found. Continuing...
       )
     EOT
+    interpreter = ["cmd.exe", "/C"]
   }
 }
 
