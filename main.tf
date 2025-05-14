@@ -26,7 +26,7 @@ resource "null_resource" "delete_existing_role" {
       aws iam get-role --role-name %ROLE_NAME% >nul 2>&1
       if %ERRORLEVEL% EQU 0 (
         echo ⚠️ Role %ROLE_NAME% exists. Deleting before Terraform Apply...
-        aws iam detach-role-policy --role-name %ROLE_NAME% --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        aws iam detach-role-policy --role-name %ROLE_NAME% --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore     
         aws iam delete-role --role-name %ROLE_NAME%
       ) else (
         echo ✅ Role %ROLE_NAME% not found. Continuing...
@@ -40,7 +40,7 @@ resource "null_resource" "delete_existing_role" {
 # **New IAM Role, Policy, and Instance Profile for SSM**
 # -----------------------------
 resource "aws_iam_role" "new_ssm_role" {
-  name       = "SSM-EC2Role"
+  name       = "NewSSM-EC2Role"
   depends_on = [null_resource.delete_existing_role]
 
   assume_role_policy = jsonencode({
