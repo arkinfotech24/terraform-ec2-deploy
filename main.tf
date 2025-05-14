@@ -17,13 +17,24 @@ data "aws_security_group" "account_sg" {
 }
 
 # -----------------------------
-# **Delete Existing IAM Role If Found**
+# Delete Existing IAM Role (inline Bash script)
 # -----------------------------
 resource "null_resource" "delete_existing_role" {
   provisioner "local-exec" {
-    command     = "${path.module}/scripts/delete-role.sh"
-    when        = "create"
-    interpreter = ["bash"]
+    command = <<EOT
+      #!/bin/bash
+      ROLE_NAME="NewSSM-EC2Role"
+
+      if aws iam get-role --role-name "$ROLE_NAME" > /dev/null 2>&1; then
+        echo "⚠️ Role $ROLE_NAME exists. Deleting before Terraform Apply..."
+        aws iam detach-role-policy --role-name "$ROLE_NAME" \
+          --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore || true
+        aws iam delete-role --role-name "$ROLE_NAME"
+      else
+        echo "✅ Role $ROLE_NAME not found. Continuing..."
+      fi
+    EOT
+    interpreter = ["bash", "-c"]
   }
 
   triggers = {
@@ -32,7 +43,7 @@ resource "null_resource" "delete_existing_role" {
 }
 
 # -----------------------------
-# **New IAM Role, Policy, and Instance Profile for SSM**
+# New IAM Role, Policy, and Instance Profile for SSM
 # -----------------------------
 resource "aws_iam_role" "new_ssm_role" {
   name       = "NewSSM-EC2Role"
