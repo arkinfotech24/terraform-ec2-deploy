@@ -10,6 +10,7 @@ data "aws_security_group" "account_sg" {
     name   = "group-name"
     values = ["Account-SG"]
   }
+
   filter {
     name   = "vpc-id"
     values = ["vpc-bd543ec7"]
@@ -17,10 +18,10 @@ data "aws_security_group" "account_sg" {
 }
 
 # -----------------------------
-# **New IAM Role, Policy, and Instance Profile for SSM**
+# New IAM Role, Policy, and Instance Profile for SSM
 # -----------------------------
 resource "aws_iam_role" "new_ssm_role" {
-  name = "NewestEC2SSMRole"
+  name = "NewEC2SSMRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -58,7 +59,7 @@ data "aws_ami" "amazon_linux" {
 }
 
 # -----------------------------
-# EC2 Instance with New IAM Role
+# EC2 Instance with SSM and SSH Access
 # -----------------------------
 resource "aws_instance" "web" {
   ami                         = data.aws_ami.amazon_linux.id
