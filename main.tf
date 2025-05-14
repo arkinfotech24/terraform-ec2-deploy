@@ -3,24 +3,43 @@ provider "aws" {
 }
 
 # -----------------------------
-# Lookup Existing Security Group in VPC
+# Define Variables for Dynamic Role Creation
+# -----------------------------
+variable "iam_role_name" {
+  default = "DynamicEC2SSMRole"
+}
+
+variable "instance_profile_name" {
+  default = "dynamic-ec2-ssm-profile"
+}
+
+variable "security_group_name" {
+  default = "Account-SG"
+}
+
+variable "vpc_id" {
+  default = "vpc-bd543ec7"
+}
+
+# -----------------------------
+# Lookup Security Group in VPC
 # -----------------------------
 data "aws_security_group" "account_sg" {
   filter {
     name   = "group-name"
-    values = ["Account-SG"]
+    values = [var.security_group_name]
   }
   filter {
     name   = "vpc-id"
-    values = ["vpc-bd543ec7"]
+    values = [var.vpc_id]
   }
 }
 
 # -----------------------------
-# **New IAM Role, Policy, and Instance Profile for SSM**
+# **Dynamically Created IAM Role for SSM**
 # -----------------------------
-resource "aws_iam_role" "new_ssm_role" {
-  name = "NewEC2SSMRole"
+resource "aws_iam_role" "ssm_role" {
+  name = var.iam_role_name
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -34,14 +53,14 @@ resource "aws_iam_role" "new_ssm_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "new_ssm_attach" {
-  role       = aws_iam_role.new_ssm_role.name
+resource "aws_iam_role_policy_attachment" "ssm_attach" {
+  role       = aws_iam_role.ssm_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-resource "aws_iam_instance_profile" "new_ssm_profile" {
-  name = "new-ec2-ssm-profile"
-  role = aws_iam_role.new_ssm_role.name
+resource "aws_iam_instance_profile" "ssm_profile" {
+  name = var.instance_profile_name
+  role = aws_iam_role.ssm_role.name
 }
 
 # -----------------------------
@@ -58,7 +77,7 @@ data "aws_ami" "amazon_linux" {
 }
 
 # -----------------------------
-# EC2 Instance with New IAM Role
+# EC2 Instance with Dynamic IAM Role
 # -----------------------------
 resource "aws_instance" "web" {
   ami                         = data.aws_ami.amazon_linux.id
@@ -67,7 +86,7 @@ resource "aws_instance" "web" {
   subnet_id                   = "subnet-9a5ab4d7"
   vpc_security_group_ids      = [data.aws_security_group.account_sg.id]
   associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.new_ssm_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ssm_profile.name
 
   user_data = <<-EOF
               #!/bin/bash
