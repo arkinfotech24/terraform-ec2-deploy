@@ -10,7 +10,6 @@ data "aws_security_group" "account_sg" {
     name   = "group-name"
     values = ["Account-SG"]
   }
-
   filter {
     name   = "vpc-id"
     values = ["vpc-bd543ec7"]
@@ -18,18 +17,32 @@ data "aws_security_group" "account_sg" {
 }
 
 # -----------------------------
-# New IAM Role, Policy, and Instance Profile for SSM
+# **Delete Existing IAM Role If Found**
+# -----------------------------
+resource "null_resource" "delete_existing_role" {
+  provisioner "local-exec" {
+    command = <<EOT
+      ROLE_EXISTS=$(aws iam get-role --role-name NewEC2SSMRole 2>/dev/null || echo "Not Found")
+      if [[ $ROLE_EXISTS != "Not Found" ]]; then
+        echo "⚠️ Role exists. Deleting before Terraform Apply..."
+        aws iam delete-role --role-name NewEC2SSMRole
+      fi
+    EOT
+  }
+}
+
+# -----------------------------
+# **New IAM Role, Policy, and Instance Profile for SSM**
 # -----------------------------
 resource "aws_iam_role" "new_ssm_role" {
-  name = "NewEC2SSMRole"
+  name       = "NewEC2SSMRole"
+  depends_on = [null_resource.delete_existing_role]  # Ensures deletion happens first
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
       Effect = "Allow",
-      Principal = {
-        Service = "ec2.amazonaws.com"
-      },
+      Principal = { Service = "ec2.amazonaws.com" },
       Action = "sts:AssumeRole"
     }]
   })
