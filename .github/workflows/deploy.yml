@@ -7,21 +7,38 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - master
+    tags:
+      - '*'  # triggers on any tag like v1.0.0 or staging-release
   pull_request:
-    branches: [ "master" ]
+    branches:
+      - master
   workflow_dispatch:
     inputs:
-      branch:
-        description: "Select the branch to run this workflow on"
+      ref:
+        description: "Git reference (branch or tag) to run this workflow on"
         required: false
         default: "master"
-        type: choice
-        options:
-          - main
-          - dev
-          - staging
-          - feature
+
+
+# on:
+#   push:
+#     branches: [ "master" ]
+#   pull_request:
+#     branches: [ "master" ]
+#   workflow_dispatch:
+#     inputs:
+#       branch:
+#         description: "Select the branch to run this workflow on"
+#         required: false
+#         default: "master"
+#         type: choice
+#         options:
+#           - main
+#           - dev
+#           - staging
+#           - feature
 
 jobs:
 
