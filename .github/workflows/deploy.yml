@@ -109,6 +109,15 @@ jobs:
           sudo ./aws/install --update
           aws --version
 
+      - name: Terraform Init and Apply
+        env:
+          TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          TF_VAR_aws_region: "us-east-1"
+        run: |
+          terraform init -upgrade
+          terraform apply -auto-approve
+
 
 # # This is a workflow for GitHub Actions
 
