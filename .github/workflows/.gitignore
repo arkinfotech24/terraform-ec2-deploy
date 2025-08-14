@@ -1,7 +1,0 @@
-# Terraform directories
-.terraform/
-*.tfstate
-*.tfstate.backup
-
-# Terraform provider binaries
-*.exe
